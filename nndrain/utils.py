@@ -8,12 +8,18 @@ import cv2
 from nndrain.simplify_linear import SimplifyLinear
 
 def set_seed(seed):
+    """
+    Set seed for random, numpy, and torch modules
+    """
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed_all(seed)
 
 def plot_weights(fig, weights, title, ax_title=None, vmin=None, vmax=None):
+    """
+    Plot weights as images
+    """
     ax = []
     columns = len(weights)
     rows = 1
@@ -28,6 +34,9 @@ def plot_weights(fig, weights, title, ax_title=None, vmin=None, vmax=None):
     display.display(plt.gcf())
 
 def images_to_gif(filenames, gif_name, tail=0):
+    """
+    Convert a list of image filenames to gif
+    """
     with imageio.get_writer(gif_name, mode='I') as writer:
         n_file = len(filenames)
         for i, filename in enumerate(filenames):
@@ -38,6 +47,9 @@ def images_to_gif(filenames, gif_name, tail=0):
                     writer.append_data(image)
 
 def images_to_avi(filenames, video_name):
+    """
+    Convert a list of image filenames to avi video
+    """
     frame = cv2.imread(filenames[0])
     height, width, layers = frame.shape
     fourcc = cv2.VideoWriter_fourcc(*'MJPG')
