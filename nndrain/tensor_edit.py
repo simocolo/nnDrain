@@ -2,7 +2,6 @@ import numpy as np
 import torch
 import torch.nn as nn
 
-import nndrain.utils as utils
 from cv2 import threshold
 
 
@@ -207,8 +206,6 @@ class TensorEdit:
         """
         if condition and np.random.random() < p_drain:
             for i_l, l in enumerate(self.layers):
-                if l.threshold is None:
-                    self.set_threshold(l)
                 r_value = l.threshold * threshold_coeff
                 size = l.weight.data.size()
                 if not l.exclude_from_drain and (size[0] > l.min_row or size[1] > l.min_col):
@@ -216,18 +213,17 @@ class TensorEdit:
                     # l.weight.data = torch.where(abs(l.weight.data)*scale<=r_value, l.weight.data*(0.2*abs(l.weight.data)*scale + 0.9), l.weight.data)
                     l.weight.data = torch.where(abs(l.weight.data) * scale <= r_value, l.weight.data * (0.1 * torch.log(2 * abs(l.weight.data) * scale + 0.1) + 1.0), l.weight.data)
 
-    def set_threshold(self, layer):
-        """Set the remove threshold value of the layer.
-
-        Parameters:
-        - layer (torch.Tensor): The layer to set the threshold value.
+    def set_threshold(self):
+        """Set the remove threshold value for each layer.
 
         Returns:
         - None
         """
-        threshold_row, _ = self.get_min_weight_row_threshold(layer.weight.data)
-        threshold_col, _ = self.get_min_weight_col_threshold(layer.weight.data)
-        layer.threshold = min(threshold_row.detach(), threshold_col.detach())
+        for i_l, layer in enumerate(self.layers):
+            if layer.threshold is None:
+                threshold_row, _ = self.get_min_weight_row_threshold(layer.weight.data)
+                threshold_col, _ = self.get_min_weight_col_threshold(layer.weight.data)
+                layer.threshold = min(threshold_row.detach(), threshold_col.detach())
 
 
     @torch.no_grad()
