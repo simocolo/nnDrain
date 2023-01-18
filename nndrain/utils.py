@@ -2,10 +2,12 @@ import torch
 import numpy as np
 import random
 import matplotlib.pyplot as plt
+import matplotlib.colors as colors
 from IPython import display
 import imageio as imageio
 from PIL import Image
 import cv2
+
 
 def set_seed(seed):
     """
@@ -84,18 +86,19 @@ def plot_charts(fig, epochs=None, losses=None, train_accuracies=None, test_accur
     display.clear_output(wait=True)
     display.display(plt.gcf())
 
-def plot_weights(fig, weights, title, ax_title=None, vmin=None, vmax=None):
+def plot_weights(fig, weights, title, ax_title=None, vmin=-1, vmax=1, colormap='coolwarm'):
     """
     Plot weights as images
     """
     ax = []
     columns = len(weights)
+    cmap = plt.get_cmap(colormap)  # specify the colormap to use
 
     for i in range(1, columns+1):
         ax.append(fig.add_subplot(1, columns, i))
         if ax_title is not None:
             ax[-1].set_title(ax_title[i-1], fontsize=9)
-        plt.imshow(weights[i-1].cpu(), vmin=vmin, vmax=vmax)
+        plt.imshow(weights[i-1].cpu(), cmap=cmap, vmin=vmin, vmax=vmax)
 
     plt.suptitle(title, fontsize=16)
     
@@ -103,6 +106,82 @@ def plot_weights(fig, weights, title, ax_title=None, vmin=None, vmax=None):
 
     display.clear_output(wait=True)
     display.display(plt.gcf())
+
+
+def plot_neural_network(fig, weights, title, input_list=None, output_list=None, label_threshold=50, ax_title=None, 
+                        linewidth_scale=0.5, vmin=-1, vmax=1, colormap='coolwarm'):
+    """
+    Plot a neural network using a scatter plot for the neurons and line plots for the connections
+    """
+    ax = fig.add_subplot(111)
+    ax.set_title(title)
+    # Get the number of layers
+    layers = len(weights)
+
+    # list to store coordinates
+    X = []
+    Y = []
+
+    # Plot the neurons
+    for i in range(layers):
+        if i==0:
+            x = [i] * np.shape(weights[i])[0]
+            y = list(range(len(weights[i])))
+            y.reverse()
+            plt.scatter(x, y, c='g', zorder=3)
+            X.append(x)
+            Y.append(y)
+            x = [i+1] * np.shape(weights[i])[1]
+            y = list(range(len(weights[i][0])))
+            y.reverse()
+            # align next layer center
+            offset = (len(weights[0]) - len(weights[i][0]))/2
+            y = [y[j] + offset for j in range(len(weights[i][0]))]
+            plt.scatter(x, y, c='g', zorder=3)
+        else:
+            x = [i+1] * np.shape(weights[i])[1]
+            y = list(range(len(weights[i][0])))
+            y.reverse()
+            # align next layer center
+            offset = (len(weights[0]) - len(weights[i][0]))/2
+            y = [y[j] + offset for j in range(len(weights[i][0]))]
+            plt.scatter(x, y, c='g', zorder=3)
+
+        X.append(x)
+        Y.append(y)
+
+    # plot the connections
+    norm = colors.Normalize(vmin=vmin, vmax=vmax)  # create an instance of the Normalize class
+    cmap = plt.get_cmap(colormap)  # specify the colormap to use
+    for i in range(layers):
+        for j in range(len(weights[i])):
+            for k in range(len(weights[i][j])):
+                color = cmap(norm(weights[i][j][k].numpy())) # get the color for the current weight value
+                plt.plot([X[i][j], X[i+1][k]], [Y[i][j], Y[i+1][k]], c=color, linewidth = abs(weights[i][j][k])*linewidth_scale, zorder=0)
+                
+    xmin, xmax = plt.xlim()
+    ymin, ymax = plt.ylim()
+
+    # plot the labels only if ymax-ymin is below label_threshold
+    if ymax-ymin < label_threshold:
+        # Add input labels
+        if input_list is not None:
+            for i, label in zip(range(len(X[0])), input_list):
+                plt.text(X[0][i] - 0.25, Y[0][i], label, ha="center", va="center", rotation=0, color='gray', fontsize=7)
+        # Add output labels
+        if output_list is not None:
+            # if the output is a single value, plot it in the middle of the last layer
+            if len(output_list) != len(Y[-1]) and len(output_list) == 1:
+                plt.text(X[-1][0] + 0.25, np.mean(Y[-1]), output_list[0], ha="center", va="center", rotation=0, color='gray', fontsize=7)
+            else:
+                for i, label in zip(range(len(X[-1])), output_list):
+                    plt.text(X[-1][i] + 0.25, Y[-1][i], label, ha="center", va="center", rotation=0, color='gray', fontsize=7)
+
+    # axis off
+    plt.axis('off')
+    display.clear_output(wait=True)
+    display.display(plt.gcf())  
+
 
 def images_to_gif(filenames, gif_name, tail=0):
     """
@@ -112,6 +191,7 @@ def images_to_gif(filenames, gif_name, tail=0):
         n_file = len(filenames)
         for i, filename in enumerate(filenames):
             image = imageio.imread(filename)
+
             writer.append_data(image)
             if i==n_file-1:
                 for t in range(tail):
@@ -131,21 +211,23 @@ def images_to_avi(filenames, video_name):
     cv2.destroyAllWindows()
     video.release()
 
-def merge_images(fw_name, fc_name):
+def merge_images(image_list):
     """
-    Merge two images vertically
+    Merge a list of images vertically
     """
-    fw = Image.open(fw_name)
-    fc = Image.open(fc_name)
+    images = [Image.open(img) for img in image_list]
+    widths, heights = zip(*(i.size for i in images))
+
     # Set the size of the resulting image
-    result_size = (fw.size[0], fw.size[1] + fc.size[1])
+    result_size = (max(widths), sum(heights))
 
     # Create an empty image with the desired size
     result = Image.new('RGB', result_size)
 
-    # Paste the two images into the resulting image
-    result.paste(fw, (0, 0))
-    result.paste(fc, (0, fw.size[1]))
+    # Paste the images into the resulting image
+    y_offset = 0
+    for img in images:
+        result.paste(img, (0, y_offset))
+        y_offset += img.size[1]
 
     return result
-
