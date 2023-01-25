@@ -122,34 +122,27 @@ def plot_neural_network(fig, weights, title, input_list=None, output_list=None, 
     X = []
     Y = []
 
+
+
     # Plot the neurons
     for i in range(layers):
         if i==0:
             x = [i] * np.shape(weights[i])[0]
             y = list(range(len(weights[i])))
             y.reverse()
-            plt.scatter(x, y, c='g', zorder=3)
             X.append(x)
             Y.append(y)
-            x = [i+1] * np.shape(weights[i])[1]
-            y = list(range(len(weights[i][0])))
-            y.reverse()
-            # align next layer center
-            offset = (len(weights[0]) - len(weights[i][0]))/2
-            y = [y[j] + offset for j in range(len(weights[i][0]))]
-            plt.scatter(x, y, c='g', zorder=3)
-        else:
-            x = [i+1] * np.shape(weights[i])[1]
-            y = list(range(len(weights[i][0])))
-            y.reverse()
-            # align next layer center
-            offset = (len(weights[0]) - len(weights[i][0]))/2
-            y = [y[j] + offset for j in range(len(weights[i][0]))]
-            plt.scatter(x, y, c='g', zorder=3)
 
+        x = [i+1] * np.shape(weights[i])[1]
+        y = list(range(len(weights[i][0])))
+        y.reverse()
+        # align next layer center
+        offset = (len(weights[0]) - len(weights[i][0]))/2
+        y = [y[j] + offset for j in range(len(weights[i][0]))]
         X.append(x)
         Y.append(y)
 
+    
     # plot the connections
     norm = colors.Normalize(vmin=vmin, vmax=vmax)  # create an instance of the Normalize class
     cmap = plt.get_cmap(colormap)  # specify the colormap to use
@@ -157,10 +150,21 @@ def plot_neural_network(fig, weights, title, input_list=None, output_list=None, 
         for j in range(len(weights[i])):
             for k in range(len(weights[i][j])):
                 color = cmap(norm(weights[i][j][k].numpy())) # get the color for the current weight value
-                plt.plot([X[i][j], X[i+1][k]], [Y[i][j], Y[i+1][k]], c=color, linewidth = abs(weights[i][j][k])*linewidth_scale, zorder=0)
+                plt.plot([X[i][j], X[i+1][k]], [Y[i][j], Y[i+1][k]], c=color, linewidth = abs(weights[i][j][k])*linewidth_scale)
                 
+    
     xmin, xmax = plt.xlim()
-    ymin, ymax = plt.ylim()
+    ymin, ymax = plt.ylim()        
+    # marker size
+    marker_size = 120/(ymax-ymin)
+    # plot the neurons
+    for i in range(layers+1):
+        for x, y in zip(X[i], Y[i]):
+            # plot neurons above the connections
+            plt.scatter(x, y, c='gray', s = marker_size, zorder=3)
+
+
+
 
     # plot the labels only if ymax-ymin is below label_threshold
     if ymax-ymin < label_threshold:
